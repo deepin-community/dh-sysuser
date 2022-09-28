@@ -1,0 +1,107 @@
+dh-sysuser (1.3.5.1) unstable; urgency=medium
+
+  * Bump Stadards-Version to 4.5.1
+  * Mark dh-sysuser and sysuser-helper Multi-Arch: foreign (Closes: #981683)
+     + Many thanks to Helmut Grohne <helmut@subdivi.de>
+
+ -- Lorenzo Puliti <plorenzo@disroot.org>  Fri, 05 Feb 2021 04:00:42 +0100
+
+dh-sysuser (1.3.5) unstable; urgency=medium
+
+  [ Lorenzo Puliti ]
+  * Do not pollute namespace in maintscript
+  * Do not impose unneeded dependency on sysuser-helper
+  * Bump Standards-Versions to 4.5.0:
+      - Add Rules-Requires-Root: no
+  * Update copyright file
+  * Adopt the package
+  * Release to unstable
+
+  [ Chris Lamb ]
+  * Tidy the grammar (etc.) of the dh_sysuser(1) manpage.
+
+  [ Andrej Shadura ]
+  * Improve the grammar of the manpage and comments in scripts.
+  * Update copyright notices.
+  * Bump debhelper from old 11 to 13.
+  * Set debhelper-compat version in Build-Depends.
+
+ -- Andrej Shadura <andrewsh@debian.org>  Wed, 30 Sep 2020 10:58:33 +0200
+
+dh-sysuser (1.3.4) experimental; urgency=medium
+
+  * [d16fed95] Add sensible comment for generated users (Closes: #928251)
+  * [829c5c5c] Move project to debian/ namespace
+  * [8f960455] Add Gitlab CI config file
+
+ -- Dmitry Bogatov <KAction@debian.org>  Thu, 06 Jun 2019 14:43:34 +0000
+
+dh-sysuser (1.3.3) unstable; urgency=medium
+
+  * Do not block uninstallation if for some reason system user could not be
+    removed. (Closes: #901799)
+  * Update standards version to 4.1.4 (no changes needed)
+  * Use secure url when referring to debian/copyright format
+
+ -- Dmitry Bogatov <KAction@gnu.org>  Mon, 25 Jun 2018 21:40:46 +0300
+
+dh-sysuser (1.3.2) unstable; urgency=medium
+
+  * Remove user on purge, not remove (Closes: #848239)
+    + Thanks: Antoine Beaupré <anarcat@debian.org>
+
+ -- Dmitry Bogatov <KAction@gnu.org>  Sun, 25 Mar 2018 14:58:19 +0300
+
+dh-sysuser (1.3.1) unstable; urgency=medium
+
+  * Fix description of sysuser-helper package: s/it's/its. (Closes: #844342)
+    + Thanks: Toby Speight <T.M.Speight.90@cantab.net>
+  * Remove system user without home directory at package uninstall. If
+    there is no home directory, it seems safe to assume that no files
+    belong to that user, and removing that user will not cause harm.
+  * Create system users with /usr/sbin/nologin as shell.
+  * Do not impose dependency on bin:adduser. It is unneeded, since
+    bin:sysuser-helper uses useradd(8), which is provided by bin:passwd,
+    with is of required priority.
+  * Document in manpage, that sysuser-helper delegates its job to useradd(8)
+    (Closes: #848240)
+  * Remove useless account locking in prerm.
+  * Ensure that content of /etc/skel is not copied into home directory.
+  * Update Vcs-* and Homepage fields in debian/control.
+  * Update standards version to 4.1.3 (no changes needed)
+  * Bump compat version to 11 (no changes needed)
+  * Document and implement login, that system user is removed
+    when it has either empty home directory or none at all (Closes: #848239)
+
+ -- Dmitry Bogatov <KAction@gnu.org>  Wed, 07 Mar 2018 03:33:07 +0300
+
+dh-sysuser (1.3) unstable; urgency=medium
+
+  * Rethink what this package actually does. Instead of removing user, it
+    is just locked. It drastically simplify maintainer script code and
+    avoids tricky situation with `deluser --remove-home'.
+    (Closes: #840469)
+    + Thanks: Simon McVittie <smcv@debian.org>
+  * New binary package: sysuser-helper. This way maintainer script
+    contains as little logic, as possible.
+  * New option: home without arguments. It creates home directory
+    for system user somewhere under /var/lib.
+
+ -- Dmitry Bogatov <KAction@gnu.org>  Mon, 31 Oct 2016 22:14:16 +0300
+
+dh-sysuser (0.2) unstable; urgency=medium
+
+  * Remove empty 'debian/docs' file
+  * Fix typo in 'debian/copyright'
+  * Add dependency on perl, which is required for
+    `deluser --remove-home' (Closes: #840469)
+  * Delete user with --force flag, allowing removing users,
+    which have running processed.
+
+ -- Dmitry Bogatov <KAction@gnu.org>  Tue, 23 Aug 2016 15:39:11 +0300
+
+dh-sysuser (0.1) unstable; urgency=low
+
+  * Initial release (Closes: #834165)
+
+ -- Dmitry Bogatov <KAction@gnu.org>  Sat, 23 Jul 2016 01:17:28 +0300

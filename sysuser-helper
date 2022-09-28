@@ -1,0 +1,44 @@
+#!/bin/sh
+set -eu
+exec >/dev/null # only errors should pass.
+command="${1}" ; shift
+
+case "${command}" in
+    postinst)
+        if ! getent passwd "$CONF_USERNAME" ; then
+            emptydir=$(mktemp -d) # to inhibit /etc/skel
+
+            set -- --system --shell /usr/sbin/nologin
+
+            # Create a home directory for a system user, unless it is
+            # /nonexistent, which must stay nonexistent.
+            if [ "${CONF_HOME}" != '/nonexistent' ] ; then
+                set -- "$@" --create-home --skel "${emptydir}" --home-dir "${CONF_HOME}"
+            fi
+
+            useradd "$@" "${CONF_USERNAME}"
+            rmdir "${emptydir}"
+        fi
+        usermod "${CONF_USERNAME}" -c "Created by dh-sysuser for ${CONF_PACKAGE}"
+
+        # If the user already has another home directory, we use `usermod
+        # --move-home'. Unfortunately, a new home is required to be
+        # non-existent (and different from previous), so this
+        # condition is required.
+        if [ ! -d "$CONF_HOME" ] ; then
+            usermod --move-home --home "$CONF_HOME" "$CONF_USERNAME"
+        fi
+        ;;
+    prerm)
+        # Transition from dh-sysuser=1.3. It did not pass mainainer
+        # script arguments to sysuser-helper.
+        case ${1:-} in
+            purge|abort-install)
+                rmdir --ignore-fail-on-non-empty "${CONF_HOME}"
+                if ! [ -d "${CONF_HOME}" ] ; then
+                    if ! userdel --force "${CONF_USERNAME}" ; then
+                        echo >&2 "warning: failed to remove ${CONF_USERNAME}. Proceeding anyway."
+                    fi
+                fi
+        esac
+esac

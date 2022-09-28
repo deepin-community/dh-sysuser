@@ -1,0 +1,3 @@
+# -*- sh -*-
+
+CONF_HOME=%HOME% CONF_PACKAGE=%PACKAGE% CONF_USERNAME=%USERNAME% /lib/sysuser-helper/sysuser-helper prerm "$@"

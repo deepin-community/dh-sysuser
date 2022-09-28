@@ -1,0 +1,202 @@
+#!/usr/bin/perl
+# dh_sysuser --- debhelper to create system users
+
+# Copyright (C) 2016—2019 Dmitry Bogatov <kaction@sagulo>
+
+# Author: Dmitry Bogatov <kaction@sagulo>
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 3
+# of the License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+use 5.014;
+use strict;
+use Debian::Debhelper::Dh_Lib;
+use File::Find;
+use File::stat;
+use feature 'signatures';
+use feature 'switch';
+no warnings 'experimental::signatures';
+no warnings 'experimental::smartmatch';
+
+init();
+
+sub parse_options($conf, $options, $user) {
+    foreach my $opt (split(/,/, $options)) {
+        given ($opt) {
+            when (/^home=(.*)$/)  { $conf->{home} = $1; }
+            when (/^home$/)       {
+                my $normal = $user;
+                $normal =~ s/^_+//;         # strip leading
+                $normal =~ s/_+$//;         # and trailing underscore
+                $normal =~ s/^[Dd]ebian-//; # and discouraged debian- prefix
+                $conf->{home} = "/var/lib/$normal";
+            }
+            when (/^defaults$/)   { "do nothing"; }
+            default               { error("unknown option `$opt'"); }
+        }
+    }
+}
+
+foreach my $pkg (@{$dh{DOPACKAGES}}) {
+    my @entries = ();
+    if (@ARGV) {
+        while (@ARGV) {
+            (my $user, my $opt) = splice(@ARGV, 0, 2);
+            push @entries, [$user, $opt];
+        }
+    } elsif (my $cfg = pkgfile($pkg, 'sysuser')) {
+        @entries = filedoublearray($cfg);
+    };
+    next unless @entries;
+    foreach my $entry (@entries) {
+        (my $user, my $opts) = @$entry;
+        $opts ||= 'defaults';
+        my %conf = (home => '/nonexistent');
+        parse_options(\%conf, $opts, $user);
+        foreach my $script (qw/prerm postinst/) {
+            autoscript($pkg, $script, "$script-sysuser",
+                       sub { s/%HOME%/$conf{home}/;
+                             s/%PACKAGE%/$pkg/;
+                             s/%USERNAME%/$user/;});
+        }
+    }
+    # every time maintainer script changes, minor version must be bumped.
+    addsubstvar($pkg, 'misc:Depends', 'sysuser-helper', '<< 1.4');
+}
+
+# PROMISE: DH NOOP WITHOUT sysuser
+=head1 NAME
+
+dh_sysuser - manage system users required for package operation
+
+=head1 SYNOPSIS
+
+B<dh_sysuser> [S<I<debhelper options>>] [I<username> I<options>] ...
+
+=head1 DESCRIPTION
+
+B<dh_sysuser> is a debhelper addon providing a simple and uniform way
+to create and remove system users required for package operation
+(for example, to run a service with dropped privileges).
+
+The user creation itself is delegated to useradd(8) utility, the behavior
+of which is controlled by F</etc/login.defs> configuration file. In
+the default installation:
+
+=over
+
+=item *
+
+The primary group of the new user is created with the same name as the
+user. The new users will not be a member of any other group except the
+primary one.
+
+=item *
+
+New users have the F</etc/shadow> password field set to '!', making it
+impossible to log in.
+
+=item *
+
+New users have the shell set to F</usr/sbin/nologin>. It is still possible
+to get a new user's shell with I<su -s>.
+
+=item *
+
+If the home directory is created (see below), its permissions are adjusted
+according to the B<UMASK> variable in F</etc/login.defs>. By default, this
+results in the mode 0755 for the home directory.
+Files from F</etc/skel> are I<NOT> copied.
+
+B<WARNING:> The data stored in new user's home directory are world-readable.
+If you (as package maintainer) need full control over home directory permissions,
+please file a bug.
+
+=back
+
+B<dh_sysuser> reads its arguments from command line and the
+F<debian/I<package>.F<sysuser>> file, if one exists, in pairs, the first
+argument being a username and the second one is options. The configuration
+file or command-line arguments must be used to create users: just calling
+B<dh_sysuser> without any arguments does not have any effect.
+
+Here are the options that can be specified after the username:
+
+=over
+
+
+=item B<home>
+
+This option requests the creation of a home directory in
+F</var/lib/B<username>>. You should use this form over the
+explicit one described below for uniformity.
+
+=item B<home>=F</path/to/home/directory>
+
+This option requests the creation of a home directory at the specified path.
+
+=item B<defaults>
+
+If you do not need any other options, specify this one.
+
+=back
+
+=head2 CRUFT OF SYSTEM USERS
+
+Creating a system user (or a user in general) is easy, but safely removing one
+is hard. There is no consensus on what should happen to its home directory or
+files owned by the user elsewhere.
+
+There was some discussion (#848239, #848240), but there is still no simple and
+definitive answer to that. Therefore dh-sysuser does the following on package removal:
+
+=over
+
+=item *
+
+If the user has been created without a home directory, it is considered safe
+to remove it.
+
+=item *
+
+If the user has been created with a home directory but at time of the package
+removal it is empty, it is considered safe to remove both the user and
+its empty home directory.
+
+=item *
+
+If the user has been created with a home directory but at time of the package
+removal it is I<not> empty, both the user and its home directory are left
+alone.
+
+B<NOTE:> As a package maintainer, you are encouraged to delete files from home
+directories known to be of little value. It increases chances that
+home directory becomes empty and user is removed.
+
+=back
+
+=head1 EXAMPLES
+
+In F<debian/I<package>.F<sysuser>>, this creates a user B<foo> with
+defaults settings, with a home directory at the default location for B<bar>,
+and a home directory at a custom location for B<baz>:
+
+    foo defaults
+    bar home
+    baz home=/opt/baz
+
+=head1 SEE ALSO
+
+useradd(8)
+
+=cut

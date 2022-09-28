@@ -1,0 +1,4 @@
+postinst-sysuser	/usr/share/debhelper/autoscripts
+prerm-sysuser		/usr/share/debhelper/autoscripts
+dh_sysuser		/usr/bin
+sysuser.pm		/usr/share/perl5/Debian/Debhelper/Sequence
